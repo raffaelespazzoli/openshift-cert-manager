@@ -1,0 +1,45 @@
+---
+# Create a selfsigned Issuer, in order to create a root CA certificate for
+# signing webhook serving certificates
+apiVersion: certmanager.k8s.io/v1alpha1
+kind: Issuer
+metadata:
+  name: self-signer
+spec:
+  selfSigned: {}
+---
+
+# Generate a RootCA Certificate used to sign certificates for the webhook
+apiVersion: certmanager.k8s.io/v1alpha1
+kind: Certificate
+metadata:
+  name: rootca
+spec:
+  secretName: rootca
+  issuerRef:
+    name: self-signer
+  commonName: "ca.self-signer.cert-manager"
+  isCA: true
+---
+
+# Create an Issuer that uses the above generated CA certificate to issue certs
+apiVersion: certmanager.k8s.io/v1alpha1
+kind: Issuer
+metadata:
+  name: internalpki
+spec:
+  ca:
+    secretName: rootca
+---
+
+# Finally, generate a serving certificate for the webhook to use
+apiVersion: certmanager.k8s.io/v1alpha1
+kind: Certificate
+metadata:
+  name: mycert
+spec:
+  secretName: mycert
+  issuerRef:
+    name: internalpki
+  dnsNames:
+  - mysvc.namespace.svc
